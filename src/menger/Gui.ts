@@ -1,7 +1,7 @@
 import { Camera } from "../lib/webglutils/Camera.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { MengerSponge } from "./MengerSponge.js";
-import { Mat4, Vec3 } from "../lib/TSM.js";
+import { Mat4, Vec2, Vec3, Vec4 } from "../lib/TSM.js";
 
 /**
  * Might be useful for designing any animation GUI
@@ -30,9 +30,13 @@ export class GUI implements IGUI {
   private fps: boolean;
   private prevX: number;
   private prevY: number;
+  private drag_v: Vec4;
+  private swivelAxis: Vec3;
+  private invProjView: Mat4;
 
   private height: number;
   private width: number;
+  private currWorldScreenPos: Vec4;
 
   private sponge: MengerSponge;
   private animation: CanvasAnimation;
@@ -128,6 +132,28 @@ export class GUI implements IGUI {
   public drag(mouse: MouseEvent): void {
 	  
 	  // TODO: Your code here for left and right mouse drag
+    
+    this.invProjView = Mat4.product(this.projMatrix(), this.viewMatrix()).inverse();
+    var curr_x = mouse.screenX;
+    var curr_y = mouse.screenY;
+    // this.drag_v = Vec2.difference(new Vec2([curr_x, curr_y]),  new Vec2([this.prevX, this.prevY]));
+    var x = 2.0 * curr_x / this.width - 1;
+    var y = 2.0 * curr_y / this.height - 1;
+    this.currWorldScreenPos = this.invProjView.multiplyVec4(new Vec4([x, -y, -1.0, 1.0])).normalize();
+    
+    
+
+    ///// might not need to normalize 
+    var prev_x = 2.0 * this.prevX / this.width - 1;
+    var prev_y = 2.0 * this.prevY / this.height - 1;
+    // get the drag vector in world coords
+    this.drag_v = Vec4.difference(this.currWorldScreenPos, this.invProjView.multiplyVec4(new Vec4([prev_x, -prev_y, -1.0, 1.0])).normalize()).normalize();
+
+
+    this.swivelAxis = Vec3.cross(new Vec3(this.drag_v.xyz), this.camera.forward()).normalize();
+    
+    // this.camera.rotate(this.swivelAxis, 0.05);
+    this.camera.orbitTarget(this.swivelAxis, 0.2);
 	  
   }
 
@@ -158,21 +184,22 @@ export class GUI implements IGUI {
 
     switch (key.code) {
       case "KeyW": {
-        this.camera.offset(this.camera.forward(), 0.1);
+        this.camera.offsetDist(-0.1);
         break;
       }
       case "KeyA": {
-        this.camera.offset(this.camera.right(), -0.1);
+        this.camera.offset(this.camera.right(), -0.1, false);
         break;
       }
       case "KeyS": {
-        this.camera.offset(this.camera.forward(), -0.1);
+        this.camera.offsetDist(0.1);
         break;  
       }
       case "KeyD": {
-        this.camera.offset(this.camera.right(), 0.1);
+        this.camera.offset(this.camera.right(), 0.1, false);
         break;
       }
+
       case "KeyR": {
         
         break;
@@ -186,11 +213,11 @@ export class GUI implements IGUI {
         break;
       }
       case "ArrowUp": {
-        this.camera.offset(this.camera.up(), 0.1);
+        this.camera.offset(this.camera.up(), 0.1, false);
         break;
       }
       case "ArrowDown": {
-        this.camera.offset(this.camera.up(), -0.1);
+        this.camera.offset(this.camera.up(), -0.1, false);
         break;
       }
       case "Digit1": {

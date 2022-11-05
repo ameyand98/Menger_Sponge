@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Vec3 } from "../lib/TSM.js";
+import { Mat4, Vec3, Vec4 } from "../lib/TSM.js";
 /**
  * Handles Mouse and Button events along with
  * the the camera.
@@ -66,6 +66,21 @@ export class GUI {
      */
     drag(mouse) {
         // TODO: Your code here for left and right mouse drag
+        this.invProjView = Mat4.product(this.projMatrix(), this.viewMatrix()).inverse();
+        var curr_x = mouse.screenX;
+        var curr_y = mouse.screenY;
+        // this.drag_v = Vec2.difference(new Vec2([curr_x, curr_y]),  new Vec2([this.prevX, this.prevY]));
+        var x = 2.0 * curr_x / this.width - 1;
+        var y = 2.0 * curr_y / this.height - 1;
+        this.currWorldScreenPos = this.invProjView.multiplyVec4(new Vec4([x, -y, -1.0, 1.0])).normalize();
+        ///// might not need to normalize 
+        var prev_x = 2.0 * this.prevX / this.width - 1;
+        var prev_y = 2.0 * this.prevY / this.height - 1;
+        // get the drag vector in world coords
+        this.drag_v = Vec4.difference(this.currWorldScreenPos, this.invProjView.multiplyVec4(new Vec4([prev_x, -prev_y, -1.0, 1.0])).normalize()).normalize();
+        this.swivelAxis = Vec3.cross(new Vec3(this.drag_v.xyz), this.camera.forward()).normalize();
+        // this.camera.rotate(this.swivelAxis, 0.05);
+        this.camera.orbitTarget(this.swivelAxis, 0.2);
     }
     /**
      * Callback function for the end of a drag event
@@ -91,19 +106,19 @@ export class GUI {
         // TOOD: Your code for key handling
         switch (key.code) {
             case "KeyW": {
-                this.camera.offset(this.camera.forward(), 0.1);
+                this.camera.offsetDist(-0.1);
                 break;
             }
             case "KeyA": {
-                this.camera.offset(this.camera.right(), -0.1);
+                this.camera.offset(this.camera.right(), -0.1, false);
                 break;
             }
             case "KeyS": {
-                this.camera.offset(this.camera.forward(), -0.1);
+                this.camera.offsetDist(0.1);
                 break;
             }
             case "KeyD": {
-                this.camera.offset(this.camera.right(), 0.1);
+                this.camera.offset(this.camera.right(), 0.1, false);
                 break;
             }
             case "KeyR": {
@@ -118,11 +133,11 @@ export class GUI {
                 break;
             }
             case "ArrowUp": {
-                this.camera.offset(this.camera.up(), 0.1);
+                this.camera.offset(this.camera.up(), 0.1, false);
                 break;
             }
             case "ArrowDown": {
-                this.camera.offset(this.camera.up(), -0.1);
+                this.camera.offset(this.camera.up(), -0.1, false);
                 break;
             }
             case "Digit1": {
